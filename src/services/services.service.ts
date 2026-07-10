@@ -74,7 +74,8 @@ export class ServicesService {
     try {
       await this.servicesRepository.remove(service);
     } catch (error: any) {
-      if (error.code === '23503') {
+      const errorCode = error.code || (error.driverError && error.driverError.code);
+      if (errorCode === '23503') {
         throw new ConflictException(
           'Cannot delete this service because it has existing bookings.',
         );

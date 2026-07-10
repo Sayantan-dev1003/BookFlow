@@ -45,7 +45,8 @@ export class BookingsService {
       return await this.bookingsRepository.save(booking);
     } catch (error: any) {
       // Postgres unique constraint violation error code is '23505'
-      if (error.code === '23505') {
+      const errorCode = error.code || (error.driverError && error.driverError.code);
+      if (errorCode === '23505') {
         throw new ConflictException(
           'This timeslot is already booked for this service',
         );
