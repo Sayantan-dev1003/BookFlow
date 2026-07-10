@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Service } from './entities/service.entity';
+import { Booking } from '../bookings/entities/booking.entity';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
@@ -11,6 +12,8 @@ export class ServicesService {
   constructor(
     @InjectRepository(Service)
     private servicesRepository: Repository<Service>,
+    @InjectRepository(Booking)
+    private bookingsRepository: Repository<Booking>,
   ) {}
 
   async create(createServiceDto: CreateServiceDto): Promise<Service> {
@@ -70,17 +73,18 @@ export class ServicesService {
     if (!service) {
       throw new NotFoundException(`Service #${id} not found`);
     }
-    
-    try {
-      await this.servicesRepository.remove(service);
-    } catch (error: any) {
-      const errorCode = error.code || (error.driverError && error.driverError.code);
-      if (errorCode === '23503') {
-        throw new ConflictException(
-          'Cannot delete this service because it has existing bookings.',
-        );
-      }
-      throw error;
+
+    // Proactively check for linked bookings before attempting deletion
+    const bookingCount = await this.bookingsRepository.count({
+      where: { serviceId: id },
+    });
+
+    if (bookingCount > 0) {
+      throw new ConflictException(
+        `Cannot delete this service because it has ${bookingCount} existing booking(s). Cancel or remove the bookings first.`,
+      );
     }
+
+    await this.servicesRepository.remove(service);
   }
 }
