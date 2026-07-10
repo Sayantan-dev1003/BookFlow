@@ -5,8 +5,14 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+import { DataSource } from 'typeorm';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Run database migrations programmatically on startup
+  const dataSource = app.get(DataSource);
+  await dataSource.runMigrations();
 
   // Global Pipes
   app.useGlobalPipes(
